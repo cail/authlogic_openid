@@ -101,7 +101,7 @@ module AuthlogicOpenid
            :return_to => controller.url_for(:for_session => "1", :remember_me => remember_me?),
            :method => :post}
 
-          controller.send(:authenticate_with_open_id, openid_identifier, options) do |result, openid_identifier, registration|
+          controller.send(:authenticate_with_open_id, openid_identifier, options) do |result, openid_identifier, sreg_response, response|
             if result.unsuccessful?
               errors.add_to_base(result.message)
               return
@@ -111,7 +111,7 @@ module AuthlogicOpenid
             
             if !attempted_record
               if auto_register?
-                auto_reg_record = create_open_id_auto_register_record(openid_identifier, registration)
+                auto_reg_record = create_open_id_auto_register_record(openid_identifier, response)
                 if !auto_reg_record.save
                   auto_reg_record.errors.each {|attr, msg| errors.add(attr, msg) }
                 else
@@ -124,10 +124,15 @@ module AuthlogicOpenid
           end
         end
 
-        def create_open_id_auto_register_record(openid_identifier, registration)
+        def create_open_id_auto_register_record(openid_identifier, response)
           returning klass.new do |auto_reg_record|
             auto_reg_record.openid_identifier = openid_identifier
-            auto_reg_record.send(:map_openid_registration, registration)
+            attrs = OpenID::SReg::Response.from_success_response(response).data
+
+            ax_response = OpenID::AX::FetchResponse.from_success_response(response)
+            attrs.merge!(ax_response.data) if ax_response
+
+            auto_reg_record.send(:map_openid_registration, attrs)
           end
         end
         
