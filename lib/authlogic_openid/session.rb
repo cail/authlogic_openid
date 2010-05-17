@@ -59,6 +59,8 @@ module AuthlogicOpenid
       end
       
       def openid_identifier=(value)
+        # if no scheme - add http
+        value = 'http://'+value if value and value !~ /:\/\//
         @openid_identifier = value.blank? ? nil : OpenID.normalize_url(value)
         @openid_error = nil
       rescue OpenID::DiscoveryFailure => e
